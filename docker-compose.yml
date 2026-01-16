@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    container_name: watchparty-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    networks:
+      - watchparty-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: watchparty-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/watchparty?authSource=admin
+      - JWT_SECRET=${JWT_SECRET}
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+    networks:
+      - watchparty-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: watchparty-client
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_WS_URL=http://localhost:5000
+    depends_on:
+      - server
+    networks:
+      - watchparty-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  watchparty-network:
+    driver: bridge
